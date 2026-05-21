@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "Shipment": {
+      "title": "Shipment",
+      "description": "A logistics delivery tracking record",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique waybill identifier e.g., SRK-TRACK-592"
+        },
+        "recipient": {
+          "type": "string",
+          "description": "Beneficiary / customer name"
+        },
+        "destination": {
+          "type": "string",
+          "description": "Delivery address or dropsite coordinates"
+        },
+        "hub": {
+          "type": "string",
+          "description": "Origin distribution facility"
+        },
+        "sender": {
+          "type": "string",
+          "description": "Supplier / dispatching agency"
+        },
+        "cargo": {
+          "type": "string",
+          "description": "Description of freight cargo"
+        },
+        "weight": {
+          "type": "string",
+          "description": "Gross cargo density / weight tonnage"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Pre-Dispatch", "In Transit", "Out for Delivery", "Delivered"],
+          "description": "Current state of transport"
+        },
+        "otpCode": {
+          "type": "string",
+          "description": "Secure 4-digit verification waybill pin"
+        },
+        "rider": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "phone": { "type": "string" },
+            "avatar": { "type": "string" },
+            "rating": { "type": "number" },
+            "vehicle": { "type": "string" },
+            "license": { "type": "string" },
+            "location": { "type": "string" }
+          },
+          "required": ["name", "phone", "avatar", "rating", "vehicle", "license", "location"]
+        },
+        "timeline": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "time": { "type": "string" },
+              "status": { "type": "string" },
+              "desc": { "type": "string" },
+              "done": { "type": "boolean" }
+            },
+            "required": ["time", "status", "desc", "done"]
+            }
+          }
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "User UID of the verified merchant creator"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server authenticated birth timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server authenticated latest pulse timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "recipient",
+        "destination",
+        "hub",
+        "sender",
+        "cargo",
+        "weight",
+        "status",
+        "otpCode",
+        "rider",
+        "timeline",
+        "ownerId",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  ,
+  "firestore": {
+    "shipments/{shipmentId}": {
+      "schema": "Shipment",
+      "description": "Primary logistics waybills secured by ownerId validation"
+    }
+  }
+}

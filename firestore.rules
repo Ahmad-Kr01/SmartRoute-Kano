@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Pillar 1)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions (Pillar 3)
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Comprehensive Shipment Schema and Type Validation (Pillar 2 & 5)
+    function isValidShipment(data) {
+      return data.keys().hasAll([
+        'id', 'recipient', 'destination', 'hub', 'sender', 'cargo', 'weight',
+        'status', 'otpCode', 'rider', 'timeline', 'ownerId', 'createdAt', 'updatedAt'
+      ]) && 
+      data.keys().size() == 13 &&
+      data.id is string && data.id.size() <= 128 &&
+      data.recipient is string && data.recipient.size() <= 256 &&
+      data.destination is string && data.destination.size() <= 512 &&
+      data.hub is string && data.hub.size() <= 256 &&
+      data.sender is string && data.sender.size() <= 256 &&
+      data.cargo is string && data.cargo.size() <= 256 &&
+      data.weight is string && data.weight.size() <= 64 &&
+      data.status is string && (
+        data.status == 'Pre-Dispatch' || 
+        data.status == 'In Transit' || 
+        data.status == 'Out for Delivery' || 
+        data.status == 'Delivered'
+      ) &&
+      data.otpCode is string && data.otpCode.size() == 4 &&
+      data.ownerId is string && data.ownerId == request.auth.uid &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp &&
+      isValidRider(data.rider) &&
+      isValidTimeline(data.timeline);
+    }
+
+    function isValidRider(rider) {
+      return rider is map && 
+      rider.keys().hasAll(['name', 'phone', 'avatar', 'rating', 'vehicle', 'license', 'location']) &&
+      rider.keys().size() == 7 &&
+      rider.name is string && rider.name.size() <= 128 &&
+      rider.phone is string && rider.phone.size() <= 32 &&
+      rider.avatar is string && rider.avatar.size() <= 2048 &&
+      (rider.rating is number || rider.rating is float || rider.rating is int) &&
+      rider.vehicle is string && rider.vehicle.size() <= 256 &&
+      rider.license is string && rider.license.size() <= 64 &&
+      rider.location is string && rider.location.size() <= 256;
+    }
+
+    function isValidTimeline(timeline) {
+      return timeline is list && timeline.size() <= 15;
+    }
+
+    // Collection routing and rule guards
+    match /shipments/{shipmentId} {
+      // Direct Single-resource Gets (PII Isolation Guard / Pillar 6)
+      allow get: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      // Collection-level secure filters (Query Enforcer / Pillar 8)
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      // Creation (Pillar 11, Timeline Sync)
+      allow create: if isSignedIn() && 
+                    isValidId(shipmentId) && 
+                    isValidShipment(incoming()) && 
+                    incoming().createdAt == request.time && 
+                    incoming().updatedAt == request.time;
+
+      // Deactivation / Delete
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      // Secure Actions (Anti-Update-Gap, Immutability & Terminal Locking / Pillar 4 & 12)
+      allow update: if isSignedIn() && 
+                    isValidId(shipmentId) && 
+                    existing().ownerId == request.auth.uid &&
+                    existing().status != 'Delivered' && // Terminal Locking (Pillar 6)
+                    isValidShipment(incoming()) && 
+                    incoming().ownerId == existing().ownerId && // Immortal Field (Pillar 12)
+                    incoming().createdAt == existing().createdAt && // Immortal Field (Pillar 12)
+                    incoming().updatedAt == request.time;
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "SmartRoute Kano",
+  "description": "Next-generation, AI-optimized logistics and delivery platform for Northern Nigeria, featuring real-time tracking, custom integration, and high-efficiency dispatcher loops.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
